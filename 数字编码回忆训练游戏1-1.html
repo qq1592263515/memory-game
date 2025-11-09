@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字编码回忆训练游戏</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary: #3b82f6;
+      --color-secondary: #10b981;
+      --color-accent: #f59e0b;
+      --font-inter: 'Inter', sans-serif;
+    }
+    @utility smooth-transition {
+      transition: all 0.3s ease-in-out;
+    }
+    body {
+      font-family: var(--font-inter);
+      background-color: #f9fafb;
+    }
+    .card {
+      @apply bg-white rounded-lg shadow-md p-6 mb-6 smooth-transition;
+    }
+    .btn {
+      @apply px-4 py-2 rounded-md font-medium smooth-transition;
+    }
+    .btn-primary {
+      @apply bg-primary text-white hover:bg-primary/90;
+    }
+    .btn-secondary {
+      @apply bg-secondary text-white hover:bg-secondary/90;
+    }
+    .btn-accent {
+      @apply bg-accent text-white hover:bg-accent/90;
+    }
+    .button-group {
+      @apply flex gap-3;
+    }
+  </style>
+</head>
+<body class="container mx-auto p-4">
+  <h1 class="text-3xl font-bold text-center mb-8 text-primary">数字编码回忆训练游戏</h1>
+
+  <div class="card">
+    <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+      <div class="flex gap-4 mb-4 md:mb-0">
+        <button id="forwardMode" class="btn btn-primary">正向训练（数字→编码）</button>
+        <button id="reverseMode" class="btn btn-secondary">反向训练（编码→数字）</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="itemCount">每组数量：</label>
+        <input type="number" id="itemCount" value="30" min="1" max="100" class="w-16 border rounded px-2 py-1">
+        <label for="range">范围：</label>
+        <select id="range" class="border rounded px-2 py-1">
+          <option value="all">00-99（含一位数）</option>
+          <option value="single">0-9（一位数）</option>
+          <option value="double">00-99（两位数）</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="forwardTraining" class="hidden">
+      <div class="text-2xl font-bold mb-4">
+        <span id="forwardIndex">0</span>/<span id="forwardTotal">0</span> 题
+      </div>
+      <div class="text-3xl font-bold mb-6" id="forwardQuestion">请准备，即将开始正向训练</div>
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-bold" id="forwardTimer">总用时：00:00</div>
+        <div class="button-group">
+          <button id="showForwardAnswer" class="btn btn-accent hidden">看答案</button>
+          <button id="nextForward" class="btn btn-secondary hidden">下一题</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="reverseTraining" class="hidden">
+      <div class="text-2xl font-bold mb-4">
+        <span id="reverseIndex">0</span>/<span id="reverseTotal">0</span> 题
+      </div>
+      <div class="text-3xl font-bold mb-6" id="reverseQuestion">请准备，即将开始反向训练</div>
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-bold" id="reverseTimer">总用时：00:00</div>
+        <div class="button-group">
+          <button id="showReverseAnswer" class="btn btn-accent hidden">看答案</button>
+          <button id="nextReverse" class="btn btn-secondary hidden">下一题</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="answerDisplay" class="mt-4 text-lg font-medium hidden">
+      <p>正确答案：<span id="answer" class="text-primary font-bold"></span></p>
+    </div>
+
+    <button id="startTraining" class="btn btn-primary w-full mt-6">开始训练</button>
+  </div>
+
+  <script>
+    // 数字编码映射表（数字→编码）
+    const digitCodeMap = {
+      "0": "呼啦圈", "1": "蜡烛", "2": "鹅", "3": "耳朵", "4": "帆船",
+      "5": "钩子", "6": "勺子", "7": "镰刀", "8": "眼镜", "9": "哨子",
+      "00": "望远镜", "01": "小树", "02": "铃儿", "03": "凳子", "04": "轿车",
+      "05": "手套", "06": "手枪", "07": "锄头", "08": "溜冰鞋", "09": "猫",
+      "10": "棒球", "11": "梯子", "12": "椅儿", "13": "医生", "14": "钥匙",
+      "15": "鹦鹉", "16": "石榴", "17": "仪器", "18": "糖葫芦", "19": "衣钩",
+      "20": "香烟", "21": "鳄鱼", "22": "双胞胎", "23": "和尚", "24": "闹钟",
+      "25": "二胡", "26": "河流", "27": "耳机", "28": "恶霸", "29": "饿囚",
+      "30": "三轮车", "31": "鲨鱼", "32": "扇儿", "33": "星星", "34": "三丝",
+      "35": "山虎", "36": "山鹿", "37": "山鸡", "38": "妇女", "39": "山丘",
+      "40": "司令", "41": "蜥蜴", "42": "柿儿", "43": "石山", "44": "蛇",
+      "45": "师傅", "46": "饲料", "47": "司机", "48": "石板", "49": "湿狗",
+      "50": "武林", "51": "工人", "52": "鼓儿", "53": "乌纱帽", "54": "青年",
+      "55": "火车", "56": "蜗牛", "57": "武器", "58": "尾巴", "59": "蜈蚣",
+      "60": "榴莲", "61": "儿童", "62": "牛儿", "63": "流沙", "64": "螺丝",
+      "65": "绿壶", "66": "溜溜球", "67": "绿漆", "68": "喇叭", "69": "太极",
+      "70": "麒麟", "71": "鸡翅", "72": "企鹅", "73": "花旗参", "74": "骑士",
+      "75": "西服", "76": "汽油", "77": "机器", "78": "青蛙", "79": "气球",
+      "80": "巴黎", "81": "白蚁", "82": "靶儿", "83": "芭蕉扇", "84": "巴士",
+      "85": "保姆", "86": "八路", "87": "白旗", "88": "爸爸", "89": "芭蕉",
+      "90": "酒瓶", "91": "球衣", "92": "球儿", "93": "旧伞", "94": "首饰",
+      "95": "酒壶", "96": "蝴蝶", "97": "旧旗", "98": "酒吧", "99": "舅舅"
+    };
+
+    // 编码数字映射表（编码→数字）
+    const codeDigitMap = Object.fromEntries(Object.entries(digitCodeMap).map(([k, v]) => [v, k]));
+
+    // 页面元素
+    const forwardMode = document.getElementById('forwardMode');
+    const reverseMode = document.getElementById('reverseMode');
+    const forwardTraining = document.getElementById('forwardTraining');
+    const reverseTraining = document.getElementById('reverseTraining');
+    const forwardQuestion = document.getElementById('forwardQuestion');
+    const reverseQuestion = document.getElementById('reverseQuestion');
+    const forwardIndex = document.getElementById('forwardIndex');
+    const forwardTotal = document.getElementById('forwardTotal');
+    const reverseIndex = document.getElementById('reverseIndex');
+    const reverseTotal = document.getElementById('reverseTotal');
+    const showForwardAnswer = document.getElementById('showForwardAnswer');
+    const showReverseAnswer = document.getElementById('showReverseAnswer');
+    const nextForward = document.getElementById('nextForward');
+    const nextReverse = document.getElementById('nextReverse');
+    const answerDisplay = document.getElementById('answerDisplay');
+    const answer = document.getElementById('answer');
+    const startTraining = document.getElementById('startTraining');
+    const itemCount = document.getElementById('itemCount');
+    const range = document.getElementById('range');
+    const forwardTimer = document.getElementById('forwardTimer');
+    const reverseTimer = document.getElementById('reverseTimer');
+
+    // 训练状态变量
+    let currentMode = 'forward'; // 默认正向
+    let currentIndex = 0;
+    let totalItems = 30;
+    let timerInterval = null;
+    let startTime = 0;
+    let currentQuestion = '';
+    let currentAnswer = '';
+    let previousQuestion = ''; // 记录上一题，用于去重
+
+    // 切换训练模式
+    forwardMode.addEventListener('click', () => {
+      currentMode = 'forward';
+      forwardTraining.classList.remove('hidden');
+      reverseTraining.classList.add('hidden');
+      forwardMode.classList.remove('btn-secondary');
+      forwardMode.classList.add('btn-primary');
+      reverseMode.classList.remove('btn-primary');
+      reverseMode.classList.add('btn-secondary');
+    });
+
+    reverseMode.addEventListener('click', () => {
+      currentMode = 'reverse';
+      reverseTraining.classList.remove('hidden');
+      forwardTraining.classList.add('hidden');
+      reverseMode.classList.remove('btn-secondary');
+      reverseMode.classList.add('btn-primary');
+      forwardMode.classList.remove('btn-primary');
+      forwardMode.classList.add('btn-secondary');
+    });
+
+    // 格式化时间
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const secs = (seconds % 60).toString().padStart(2, '0');
+      return `${mins}:${secs}`;
+    }
+
+    // 启动计时器（整组计时）
+    function startGroupTimer(timerElement) {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        timerElement.textContent = `总用时：${formatTime(elapsed)}`;
+      }, 1000);
+    }
+
+    // 停止计时器
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    // 生成不重复的随机数字（根据范围）
+    function generateUniqueRandomDigit() {
+      let newDigit;
+      const rangeValue = range.value;
+      
+      // 循环直到生成与上一题不同的数字
+      do {
+        if (rangeValue === 'single') {
+          newDigit = Math.floor(Math.random() * 10).toString();
+        } else if (rangeValue === 'double') {
+          newDigit = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        } else {
+          const num = Math.floor(Math.random() * 100);
+          newDigit = num < 10 ? num.toString() : num.toString().padStart(2, '0');
+        }
+      } while (newDigit === previousQuestion);
+      
+      return newDigit;
+    }
+
+    // 生成不重复的随机编码
+    function generateUniqueRandomCode() {
+      let newCode;
+      const codes = Object.keys(codeDigitMap);
+      
+      // 循环直到生成与上一题不同的编码
+      do {
+        const randomIndex = Math.floor(Math.random() * codes.length);
+        newCode = codes[randomIndex];
+      } while (newCode === previousQuestion);
+      
+      return newCode;
+    }
+
+    // 显示题目
+    function showQuestion() {
+      // 更新题目序号显示
+      if (currentMode === 'forward') {
+        forwardIndex.textContent = currentIndex + 1;
+        forwardTotal.textContent = totalItems;
+        currentQuestion = generateUniqueRandomDigit();
+        currentAnswer = digitCodeMap[currentQuestion];
+        forwardQuestion.textContent = `数字：${currentQuestion}`;
+      } else {
+        reverseIndex.textContent = currentIndex + 1;
+        reverseTotal.textContent = totalItems;
+        currentQuestion = generateUniqueRandomCode();
+        currentAnswer = codeDigitMap[currentQuestion];
+        reverseQuestion.textContent = `编码：${currentQuestion}`;
+      }
+      
+      // 重置答案显示
+      answerDisplay.classList.add('hidden');
+      
+      // 同时显示"看答案"和"下一题"按钮
+      if (currentMode === 'forward') {
+        showForwardAnswer.classList.remove('hidden');
+        nextForward.classList.remove('hidden');
+      } else {
+        showReverseAnswer.classList.remove('hidden');
+        nextReverse.classList.remove('hidden');
+      }
+    }
+
+    // 显示答案
+    function showAnswer() {
+      answer.textContent = currentMode === 'forward' ? `${currentQuestion} → ${currentAnswer}` : `${currentQuestion} → ${currentAnswer}`;
+      answerDisplay.classList.remove('hidden');
+    }
+
+    // 下一题
+    function nextQuestion() {
+      // 记录当前题目作为上一题，用于去重
+      previousQuestion = currentQuestion;
+      currentIndex++;
+      
+      if (currentIndex < totalItems) {
+        showQuestion();
+      } else {
+        // 训练完成
+        stopTimer();
+        if (currentMode === 'forward') {
+          forwardQuestion.textContent = '正向训练完成！';
+          showForwardAnswer.classList.add('hidden');
+          nextForward.classList.add('hidden');
+        } else {
+          reverseQuestion.textContent = '反向训练完成！';
+          showReverseAnswer.classList.add('hidden');
+          nextReverse.classList.add('hidden');
+        }
+        // 重置上一题记录，为下一轮训练做准备
+        previousQuestion = '';
+      }
+    }
+
+    // 开始训练
+    startTraining.addEventListener('click', () => {
+      totalItems = parseInt(itemCount.value);
+      currentIndex = 0;
+      previousQuestion = ''; // 重置上一题记录
+      stopTimer(); // 确保先停止任何正在运行的计时器
+      
+      // 重置计时器显示
+      forwardTimer.textContent = '总用时：00:00';
+      reverseTimer.textContent = '总用时：00:00';
+      
+      // 启动整组计时
+      if (currentMode === 'forward') {
+        startGroupTimer(forwardTimer);
+      } else {
+        startGroupTimer(reverseTimer);
+      }
+      
+      // 显示第一题
+      showQuestion();
+    });
+
+    // 绑定看答案和下一题事件
+    showForwardAnswer.addEventListener('click', showAnswer);
+    showReverseAnswer.addEventListener('click', showAnswer);
+    nextForward.addEventListener('click', nextQuestion);
+    nextReverse.addEventListener('click', nextQuestion);
+  </script>
+</body>
+</html>

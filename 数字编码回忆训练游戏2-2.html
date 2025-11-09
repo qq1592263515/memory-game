@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字编码回忆训练游戏（图片模式）</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary: #3b82f6;
+      --color-secondary: #10b981;
+      --color-accent: #f59e0b;
+      --font-inter: 'Inter', sans-serif;
+    }
+    @utility smooth-transition {
+      transition: all 0.3s ease-in-out;
+    }
+    body {
+      font-family: var(--font-inter);
+      background-color: #f9fafb;
+    }
+    .card {
+      @apply bg-white rounded-lg shadow-md p-6 mb-6 smooth-transition;
+    }
+    .btn {
+      @apply px-4 py-2 rounded-md font-medium smooth-transition;
+    }
+    .btn-primary {
+      @apply bg-primary text-white hover:bg-primary/90;
+    }
+    .btn-secondary {
+      @apply bg-secondary text-white hover:bg-secondary/90;
+    }
+    .btn-accent {
+      @apply bg-accent text-white hover:bg-accent/90;
+    }
+    .button-group {
+      @apply flex gap-3;
+    }
+    .image-container {
+      @apply flex justify-center items-center my-8;
+    }
+    .question-image {
+      @apply max-w-full max-h-[300px] object-contain rounded-lg shadow-md;
+    }
+    /* 添加并排布局样式 */
+    .content-row {
+      @apply flex flex-col md:flex-row gap-8;
+    }
+    .content-column {
+      @apply flex-1;
+    }
+  </style>
+</head>
+<body class="container mx-auto p-4">
+  <h1 class="text-3xl font-bold text-center mb-8 text-primary">数字编码回忆训练游戏</h1>
+
+  <div class="card">
+    <!-- 模式切换和设置区域 -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-4 flex-wrap gap-4">
+      <div class="flex gap-4">
+        <button id="forwardMode" class="btn btn-primary">正向训练（数字→编码）</button>
+        <button id="reverseMode" class="btn btn-secondary">反向训练（编码→数字）</button>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <label for="displayMode">显示模式：</label>
+          <select id="displayMode" class="border rounded px-2 py-1">
+            <option value="image">图片模式</option>
+            <option value="text" selected>文字模式</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="itemCount">每组数量：</label>
+          <input type="number" id="itemCount" value="30" min="1" max="100" class="w-16 border rounded px-2 py-1">
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="range">范围：</label>
+          <select id="range" class="border rounded px-2 py-1">
+            <option value="all">00-99（含一位数）</option>
+            <option value="single">0-9（一位数）</option>
+            <option value="double">00-99（两位数）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 正向训练区域 -->
+    <div id="forwardTraining" class="hidden">
+      <div class="text-2xl font-bold mb-4">
+        <span id="forwardIndex">0</span>/<span id="forwardTotal">0</span> 题
+      </div>
+      
+      <!-- 修改为并排布局 -->
+      <div class="content-row">
+        <!-- 问题区域 -->
+        <div class="content-column">
+          <h3 class="text-xl font-bold mb-2 text-center">问题</h3>
+          <!-- 文字显示区域 -->
+          <div id="forwardTextQuestion" class="text-3xl font-bold mb-6 text-center">请准备，即将开始正向训练</div>
+          
+          <!-- 图片显示区域 -->
+          <!-- 确保HTML结构中所有图片容器默认带有hidden类 -->
+          <div id="forwardImageContainer" class="image-container hidden">
+            <img id="forwardQuestionImage" class="question-image" src="" alt="数字图片">
+          </div>
+        </div>
+        
+        <!-- 答案区域 - 移到问题旁边 -->
+        <div id="answerDisplay" class="content-column mt-4 text-lg font-medium hidden">
+          <h3 class="text-xl font-bold mb-2 text-center">正确答案</h3>
+          <div class="text-3xl font-bold mb-6 text-center text-primary" id="answer"></div>
+          <div id="answerImageContainer" class="image-container mt-4 hidden">
+            <img id="answerImage" class="question-image" src="" alt="答案图片">
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-bold" id="forwardTimer">总用时：00:00</div>
+        <div class="button-group">
+          <button id="showForwardAnswer" class="btn btn-accent hidden">看答案</button>
+          <button id="nextForward" class="btn btn-secondary hidden">下一题</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 反向训练区域 -->
+    <div id="reverseTraining" class="hidden">
+      <div class="text-2xl font-bold mb-4">
+        <span id="reverseIndex">0</span>/<span id="reverseTotal">0</span> 题
+      </div>
+      
+      <!-- 修改为并排布局 -->
+      <div class="content-row">
+        <!-- 问题区域 -->
+        <div class="content-column">
+          <h3 class="text-xl font-bold mb-2 text-center">问题</h3>
+          <!-- 文字显示区域 -->
+          <div id="reverseTextQuestion" class="text-3xl font-bold mb-6 text-center">请准备，即将开始反向训练</div>
+          
+          <!-- 图片显示区域 -->
+          <div id="reverseImageContainer" class="image-container hidden">
+            <img id="reverseQuestionImage" class="question-image" src="" alt="编码图片">
+          </div>
+        </div>
+        
+        <!-- 答案区域 - 移到问题旁边 -->
+        <div id="answerDisplay" class="content-column mt-4 text-lg font-medium hidden">
+          <h3 class="text-xl font-bold mb-2 text-center">正确答案</h3>
+          <div class="text-3xl font-bold mb-6 text-center text-primary" id="answer"></div>
+          <div id="answerImageContainer" class="image-container mt-4 hidden">
+            <img id="answerImage" class="question-image" src="" alt="答案图片">
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-bold" id="reverseTimer">总用时：00:00</div>
+        <div class="button-group">
+          <button id="showReverseAnswer" class="btn btn-accent hidden">看答案</button>
+          <button id="nextReverse" class="btn btn-secondary hidden">下一题</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="startTraining" class="btn btn-primary w-full mt-6">开始训练</button>
+  </div>
+
+  <script>
+    // 数字编码映射表（数字→编码）
+    const digitCodeMap = {
+      "0": "呼啦圈", "1": "蜡烛", "2": "鹅", "3": "耳朵", "4": "帆船",
+      "5": "钩子", "6": "勺子", "7": "镰刀", "8": "眼镜", "9": "哨子",
+      "00": "望远镜", "01": "小树", "02": "铃儿", "03": "凳子", "04": "轿车",
+      "05": "手套", "06": "手枪", "07": "锄头", "08": "溜冰鞋", "09": "猫",
+      "10": "棒球", "11": "梯子", "12": "椅儿", "13": "医生", "14": "钥匙",
+      "15": "鹦鹉", "16": "石榴", "17": "仪器", "18": "糖葫芦", "19": "衣钩",
+      "20": "香烟", "21": "鳄鱼", "22": "双胞胎", "23": "和尚", "24": "闹钟",
+      "25": "二胡", "26": "河流", "27": "耳机", "28": "恶霸", "29": "饿囚",
+      "30": "三轮车", "31": "鲨鱼", "32": "扇儿", "33": "星星", "34": "三丝",
+      "35": "山虎", "36": "山鹿", "37": "山鸡", "38": "妇女", "39": "山丘",
+      "40": "司令", "41": "蜥蜴", "42": "柿儿", "43": "石山", "44": "蛇",
+      "45": "师傅", "46": "饲料", "47": "司机", "48": "石板", "49": "湿狗",
+      "50": "武林", "51": "工人", "52": "鼓儿", "53": "乌纱帽", "54": "青年",
+      "55": "火车", "56": "蜗牛", "57": "武器", "58": "尾巴", "59": "蜈蚣",
+      "60": "榴莲", "61": "儿童", "62": "牛儿", "63": "流沙", "64": "螺丝",
+      "65": "绿壶", "66": "溜溜球", "67": "绿漆", "68": "喇叭", "69": "太极",
+      "70": "麒麟", "71": "鸡翅", "72": "企鹅", "73": "花旗参", "74": "骑士",
+      "75": "西服", "76": "汽油", "77": "机器", "78": "青蛙", "79": "气球",
+      "80": "巴黎", "81": "白蚁", "82": "靶儿", "83": "芭蕉扇", "84": "巴士",
+      "85": "保姆", "86": "八路", "87": "白旗", "88": "爸爸", "89": "芭蕉",
+      "90": "酒瓶", "91": "球衣", "92": "球儿", "93": "旧伞", "94": "首饰",
+      "95": "酒壶", "96": "蝴蝶", "97": "旧旗", "98": "酒吧", "99": "舅舅"
+    };
+
+    // 编码数字映射表（编码→数字）
+    const codeDigitMap = Object.fromEntries(Object.entries(digitCodeMap).map(([k, v]) => [v, k]));
+
+    // 页面元素
+    const forwardMode = document.getElementById('forwardMode');
+    const reverseMode = document.getElementById('reverseMode');
+    const forwardTraining = document.getElementById('forwardTraining');
+    const reverseTraining = document.getElementById('reverseTraining');
+    const forwardTextQuestion = document.getElementById('forwardTextQuestion');
+    const reverseTextQuestion = document.getElementById('reverseTextQuestion');
+    const forwardImageContainer = document.getElementById('forwardImageContainer');
+    const reverseImageContainer = document.getElementById('reverseImageContainer');
+    const forwardQuestionImage = document.getElementById('forwardQuestionImage');
+    const reverseQuestionImage = document.getElementById('reverseQuestionImage');
+    const forwardIndex = document.getElementById('forwardIndex');
+    const forwardTotal = document.getElementById('forwardTotal');
+    const reverseIndex = document.getElementById('reverseIndex');
+    const reverseTotal = document.getElementById('reverseTotal');
+    const showForwardAnswer = document.getElementById('showForwardAnswer');
+    const showReverseAnswer = document.getElementById('showReverseAnswer');
+    const nextForward = document.getElementById('nextForward');
+    const nextReverse = document.getElementById('nextReverse');
+    const answerDisplays = document.querySelectorAll('#answerDisplay'); // 获取所有答案显示元素
+    const answers = document.querySelectorAll('#answer'); // 获取所有答案元素
+    const answerImageContainers = document.querySelectorAll('#answerImageContainer'); // 获取所有答案图片容器
+    const answerImages = document.querySelectorAll('#answerImage'); // 获取所有答案图片元素
+    const startTraining = document.getElementById('startTraining');
+    const itemCount = document.getElementById('itemCount');
+    const range = document.getElementById('range');
+    const displayMode = document.getElementById('displayMode');
+    const forwardTimer = document.getElementById('forwardTimer');
+    const reverseTimer = document.getElementById('reverseTimer');
+
+    // 训练状态变量
+    let currentMode = 'forward'; // 默认正向
+    let currentDisplayMode = displayMode.value; // 从选择框获取默认值
+    let currentIndex = 0;
+    let totalItems = 30;
+    let timerInterval = null;
+    let startTime = 0;
+    let currentQuestion = '';
+    let currentAnswer = '';
+    let previousQuestion = ''; // 记录上一题，用于去重
+    
+    // 初始化页面显示
+    function initPageDisplay() {
+      // 初始化训练区域显示
+      forwardMode.click(); // 触发一次正向模式点击，确保正确的CSS类应用
+      
+      // 获取并设置当前显示模式
+      currentDisplayMode = displayMode.value;
+      
+      // 确保所有图片容器默认隐藏，防止占位符显示
+      forwardImageContainer.classList.add('hidden');
+      reverseImageContainer.classList.add('hidden');
+      // 隐藏所有答案图片容器
+      answerImageContainers.forEach(container => {
+        container.classList.add('hidden');
+      });
+      // 清除所有图片源
+      forwardQuestionImage.src = '';
+      reverseQuestionImage.src = '';
+      answerImages.forEach(img => {
+        img.src = '';
+        img.alt = '';
+      });
+      forwardQuestionImage.alt = '';
+      reverseQuestionImage.alt = '';
+      
+      // 设置初始文字内容，避免显示占位符
+      if (currentMode === 'forward') {
+        forwardTextQuestion.textContent = '请准备，即将开始正向训练';
+      } else {
+        reverseTextQuestion.textContent = '请准备，即将开始反向训练';
+      }
+    }
+    
+    // 在页面加载完成后初始化显示
+    // 确保这个监听器被正确添加
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPageDisplay);
+    } else {
+      // 如果DOM已经加载完成，直接执行
+      initPageDisplay();
+    }
+    
+    // 在训练模式切换时也要处理显示模式
+    forwardMode.addEventListener('click', () => {
+      currentMode = 'forward';
+      forwardTraining.classList.remove('hidden');
+      reverseTraining.classList.add('hidden');
+      forwardMode.classList.remove('btn-secondary');
+      forwardMode.classList.add('btn-primary');
+      reverseMode.classList.remove('btn-primary');
+      reverseMode.classList.add('btn-secondary');
+      
+      // 根据当前显示模式更新UI
+      if (currentDisplayMode === 'text') {
+        // 文字模式下确保正确的元素显示/隐藏
+        forwardTextQuestion.classList.remove('hidden');
+        reverseTextQuestion.classList.add('hidden');
+        forwardImageContainer.classList.add('hidden');
+        reverseImageContainer.classList.add('hidden');
+      } else {
+        // 图片模式下确保正确的元素显示/隐藏
+        forwardTextQuestion.classList.remove('hidden'); // 修改：不隐藏文字
+        reverseTextQuestion.classList.add('hidden');
+        forwardImageContainer.classList.remove('hidden');
+        reverseImageContainer.classList.add('hidden');
+      }
+    });
+    
+    reverseMode.addEventListener('click', () => {
+      currentMode = 'reverse';
+      reverseTraining.classList.remove('hidden');
+      forwardTraining.classList.add('hidden');
+      reverseMode.classList.remove('btn-secondary');
+      reverseMode.classList.add('btn-primary');
+      forwardMode.classList.remove('btn-primary');
+      forwardMode.classList.add('btn-secondary');
+      
+      // 根据当前显示模式更新UI
+      if (currentDisplayMode === 'text') {
+        // 文字模式下确保正确的元素显示/隐藏
+        reverseTextQuestion.classList.remove('hidden');
+        forwardTextQuestion.classList.add('hidden');
+        forwardImageContainer.classList.add('hidden');
+        reverseImageContainer.classList.add('hidden');
+      } else {
+        // 图片模式下确保正确的元素显示/隐藏
+        forwardTextQuestion.classList.add('hidden');
+        reverseTextQuestion.classList.remove('hidden'); // 修改：不隐藏文字
+        forwardImageContainer.classList.add('hidden');
+        reverseImageContainer.classList.remove('hidden');
+      }
+    });
+    displayMode.addEventListener('change', () => {
+      currentDisplayMode = displayMode.value;
+      
+      // 更新所有相关UI元素，无论是否在训练中
+      // 首先处理文字区域和图片容器的显示/隐藏
+      if (currentDisplayMode === 'text') {
+        // 文字模式
+        // 隐藏所有图片容器并清除图片源
+        forwardImageContainer.classList.add('hidden');
+        reverseImageContainer.classList.add('hidden');
+        // 隐藏所有答案图片容器并清除图片源
+        answerImageContainers.forEach(container => {
+          container.classList.add('hidden');
+        });
+        answerImages.forEach(img => {
+          img.src = '';
+          img.alt = '';
+        });
+        forwardQuestionImage.src = '';
+        reverseQuestionImage.src = '';
+        forwardQuestionImage.alt = '';
+        reverseQuestionImage.alt = '';
+        
+        // 显示当前模式的文字区域
+        if (currentMode === 'forward') {
+          forwardTextQuestion.classList.remove('hidden');
+          reverseTextQuestion.classList.add('hidden');
+        } else {
+          reverseTextQuestion.classList.remove('hidden');
+          forwardTextQuestion.classList.add('hidden');
+        }
+      } else {
+        // 图片模式
+        // 修改：不隐藏文字区域
+        forwardTextQuestion.classList.remove('hidden'); // 保持文字可见
+        reverseTextQuestion.classList.remove('hidden'); // 保持文字可见
+        
+        // 根据当前模式显示相应的图片容器
+        if (currentMode === 'forward') {
+          forwardImageContainer.classList.remove('hidden');
+          reverseImageContainer.classList.add('hidden');
+        } else {
+          forwardImageContainer.classList.add('hidden');
+          reverseImageContainer.classList.remove('hidden');
+        }
+      }
+      
+      // 如果正在训练中，更新当前题目的内容
+      if (currentIndex > 0 && currentIndex < totalItems) {
+        if (currentDisplayMode === 'image') {
+          // 图片模式下设置图片
+          if (currentMode === 'forward') {
+            forwardQuestionImage.src = getNumberImagePath(currentQuestion);
+            forwardQuestionImage.alt = `数字 ${currentQuestion}`;
+          } else {
+            reverseQuestionImage.src = getCodeImagePath(currentQuestion);
+            reverseQuestionImage.alt = currentQuestion;
+          }
+        } else {
+          // 文字模式下设置文字
+          if (currentMode === 'forward') {
+            forwardTextQuestion.textContent = `数字：${currentQuestion}`;
+          } else {
+            reverseTextQuestion.textContent = `编码：${currentQuestion}`;
+          }
+        }
+        
+        // 如果答案正在显示，更新答案
+        answerDisplays.forEach(display => {
+          if (!display.classList.contains('hidden')) {
+            showAnswer();
+          }
+        });
+      }
+    });
+
+    // 更新显示模式（文字/图片）
+    function updateDisplayMode() {
+      if (currentMode === 'forward') {
+        if (currentDisplayMode === 'image') {
+          forwardTextQuestion.classList.remove('hidden'); // 修改：不隐藏文字
+          forwardImageContainer.classList.remove('hidden');
+          forwardQuestionImage.src = getNumberImagePath(currentQuestion);
+          forwardQuestionImage.alt = `数字 ${currentQuestion}`;
+        } else {
+          forwardTextQuestion.classList.remove('hidden');
+          forwardImageContainer.classList.add('hidden');
+          // 确保图片源被清除，防止占位符显示
+          forwardQuestionImage.src = '';
+          forwardQuestionImage.alt = '';
+        }
+      } else {
+        if (currentDisplayMode === 'image') {
+          reverseTextQuestion.classList.remove('hidden'); // 修改：不隐藏文字
+          reverseImageContainer.classList.remove('hidden');
+          reverseQuestionImage.src = getCodeImagePath(currentQuestion);
+          reverseQuestionImage.alt = currentQuestion;
+        } else {
+          reverseTextQuestion.classList.remove('hidden');
+          reverseImageContainer.classList.add('hidden');
+          // 确保图片源被清除，防止占位符显示
+          reverseQuestionImage.src = '';
+          reverseQuestionImage.alt = '';
+        }
+      }
+    }
+    
+    // 显示题目
+    function showQuestion() {
+      // 更新题目序号显示
+      if (currentMode === 'forward') {
+        forwardIndex.textContent = currentIndex + 1;
+        forwardTotal.textContent = totalItems;
+        currentQuestion = generateUniqueRandomDigit();
+        currentAnswer = digitCodeMap[currentQuestion];
+        
+        // 确保在文字模式下图片容器被隐藏且图片源被清除
+        if (currentDisplayMode === 'image') {
+          forwardTextQuestion.classList.remove('hidden'); // 修改：不隐藏文字
+          forwardImageContainer.classList.remove('hidden');
+          forwardQuestionImage.src = getNumberImagePath(currentQuestion);
+          forwardQuestionImage.alt = `数字 ${currentQuestion}`;
+        } else {
+          forwardTextQuestion.classList.remove('hidden');
+          forwardImageContainer.classList.add('hidden');
+          forwardQuestionImage.src = ''; // 清除图片源
+          forwardQuestionImage.alt = '';
+        }
+        // 无论哪种模式都设置文字内容
+        forwardTextQuestion.textContent = `数字：${currentQuestion}`;
+      } else {
+        reverseIndex.textContent = currentIndex + 1;
+        reverseTotal.textContent = totalItems;
+        currentQuestion = generateUniqueRandomCode();
+        currentAnswer = codeDigitMap[currentQuestion];
+        
+        // 确保在文字模式下图片容器被隐藏且图片源被清除
+        if (currentDisplayMode === 'image') {
+          reverseTextQuestion.classList.remove('hidden'); // 修改：不隐藏文字
+          reverseImageContainer.classList.remove('hidden');
+          reverseQuestionImage.src = getCodeImagePath(currentQuestion);
+          reverseQuestionImage.alt = currentQuestion;
+        } else {
+          reverseTextQuestion.classList.remove('hidden');
+          reverseImageContainer.classList.add('hidden');
+          reverseQuestionImage.src = ''; // 清除图片源
+          reverseQuestionImage.alt = '';
+        }
+        // 无论哪种模式都设置文字内容
+        reverseTextQuestion.textContent = `编码：${currentQuestion}`;
+      }
+      
+      // 重置答案显示 - 隐藏当前模式对应的答案显示
+      if (currentMode === 'forward') {
+        answerDisplays[0].classList.add('hidden'); // 隐藏正向训练的答案
+        answerImageContainers[0].classList.add('hidden'); // 隐藏正向训练的答案图片
+        answerImages[0].src = ''; // 清除正向训练的答案图片源
+      } else {
+        answerDisplays[1].classList.add('hidden'); // 隐藏反向训练的答案
+        answerImageContainers[1].classList.add('hidden'); // 隐藏反向训练的答案图片
+        answerImages[1].src = ''; // 清除反向训练的答案图片源
+      }
+      
+      // 同时显示"看答案"和"下一题"按钮
+      if (currentMode === 'forward') {
+        showForwardAnswer.classList.remove('hidden');
+        nextForward.classList.remove('hidden');
+      } else {
+        showReverseAnswer.classList.remove('hidden');
+        nextReverse.classList.remove('hidden');
+      }
+    }
+
+    // 显示答案 - 修改为左右并排显示
+    function showAnswer() {
+      // 根据当前模式显示对应的答案
+      const answerIndex = currentMode === 'forward' ? 0 : 1;
+      
+      if (currentMode === 'forward') {
+        // 修改：只显示答案部分，不包含问题
+        answers[answerIndex].textContent = currentAnswer;
+        // 如果是图片模式，显示答案图片
+        if (currentDisplayMode === 'image') {
+          answerImages[answerIndex].src = getCodeImagePath(currentAnswer);
+          answerImages[answerIndex].alt = currentAnswer;
+          answerImageContainers[answerIndex].classList.remove('hidden');
+        } else {
+          answerImages[answerIndex].src = ''; // 清除图片源
+          answerImageContainers[answerIndex].classList.add('hidden'); // 确保隐藏答案图片容器
+        }
+      } else {
+        // 修改：只显示答案部分，不包含问题
+        answers[answerIndex].textContent = currentAnswer;
+        // 如果是图片模式，显示答案图片
+        if (currentDisplayMode === 'image') {
+          answerImages[answerIndex].src = getNumberImagePath(currentAnswer);
+          answerImages[answerIndex].alt = `数字 ${currentAnswer}`;
+          answerImageContainers[answerIndex].classList.remove('hidden');
+        } else {
+          answerImages[answerIndex].src = ''; // 清除图片源
+          answerImageContainers[answerIndex].classList.add('hidden'); // 确保隐藏答案图片容器
+        }
+      }
+      // 显示当前模式对应的答案区域
+      answerDisplays[answerIndex].classList.remove('hidden');
+    }
+    
+    // 获取数字图片路径（请根据实际图片存放位置修改）
+    function getNumberImagePath(number) {
+      // 数字图片存放在numbers文件夹下，命名格式为"数字.png"
+      return `numbers/${number}.png`;
+    }
+
+    // 获取编码图片路径（请根据实际图片存放位置修改）
+    function getCodeImagePath(code) {
+      // 编码图片存放在codes文件夹下，命名格式为"编码.png"
+      return `codes/${code}.png`;
+    }
+
+    // 格式化时间
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const secs = (seconds % 60).toString().padStart(2, '0');
+      return `${mins}:${secs}`;
+    }
+
+    // 启动计时器（整组计时）
+    function startGroupTimer(timerElement) {
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        timerElement.textContent = `总用时：${formatTime(elapsed)}`;
+      }, 1000);
+    }
+
+    // 停止计时器
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    // 生成不重复的随机数字（根据范围）
+    function generateUniqueRandomDigit() {
+      let newDigit;
+      const rangeValue = range.value;
+      
+      // 循环直到生成与上一题不同的数字
+      do {
+        if (rangeValue === 'single') {
+          newDigit = Math.floor(Math.random() * 10).toString();
+        } else if (rangeValue === 'double') {
+          newDigit = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        } else {
+          const num = Math.floor(Math.random() * 100);
+          newDigit = num < 10 ? num.toString() : num.toString().padStart(2, '0');
+        }
+      } while (newDigit === previousQuestion);
+      
+      return newDigit;
+    }
+
+    // 生成不重复的随机编码（根据范围）
+    function generateUniqueRandomCode() {
+      let newCode;
+      const rangeValue = range.value;
+      
+      // 根据范围过滤编码列表
+      let filteredCodes = [];
+      if (rangeValue === 'single') {
+        // 一位数范围：只包含数字1-9的编码（不包括00-09）
+        filteredCodes = Object.keys(codeDigitMap).filter(code => {
+          const digit = codeDigitMap[code];
+          return digit.length === 1;
+        });
+      } else if (rangeValue === 'double') {
+        // 两位数范围：包含数字00-99的编码（包括00-09）
+        filteredCodes = Object.keys(codeDigitMap).filter(code => {
+          const digit = codeDigitMap[code];
+          return digit.length === 2;
+        });
+      } else {
+        // 全部范围：使用所有编码
+        filteredCodes = Object.keys(codeDigitMap);
+      }
+      
+      // 循环直到生成与上一题不同的编码
+      do {
+        const randomIndex = Math.floor(Math.random() * filteredCodes.length);
+        newCode = filteredCodes[randomIndex];
+      } while (newCode === previousQuestion);
+      
+      return newCode;
+    }
+
+    // 下一题
+    function nextQuestion() {
+      // 记录当前题目作为上一题，用于去重
+      previousQuestion = currentQuestion;
+      currentIndex++;
+      
+      if (currentIndex < totalItems) {
+        showQuestion();
+      } else {
+        // 训练完成
+        stopTimer();
+        if (currentMode === 'forward') {
+          forwardTextQuestion.textContent = '正向训练完成！';
+          forwardImageContainer.classList.add('hidden');
+          forwardTextQuestion.classList.remove('hidden');
+          showForwardAnswer.classList.add('hidden');
+          nextForward.classList.add('hidden');
+        } else {
+          reverseTextQuestion.textContent = '反向训练完成！';
+          reverseImageContainer.classList.add('hidden');
+          reverseTextQuestion.classList.remove('hidden');
+          showReverseAnswer.classList.add('hidden');
+          nextReverse.classList.add('hidden');
+        }
+        // 重置上一题记录，为下一轮训练做准备
+        previousQuestion = '';
+      }
+    }
+
+    // 开始训练
+    startTraining.addEventListener('click', () => {
+      totalItems = parseInt(itemCount.value);
+      currentIndex = 0;
+      previousQuestion = ''; // 重置上一题记录
+      currentDisplayMode = displayMode.value; // 获取当前显示模式
+      stopTimer(); // 确保先停止任何正在运行的计时器
+      
+      // 重置计时器显示
+      forwardTimer.textContent = '总用时：00:00';
+      reverseTimer.textContent = '总用时：00:00';
+      
+      // 先重置显示状态
+      if (currentMode === 'forward') {
+        forwardImageContainer.classList.add('hidden');
+        forwardQuestionImage.src = '';
+        forwardQuestionImage.alt = '';
+      } else {
+        reverseImageContainer.classList.add('hidden');
+        reverseQuestionImage.src = '';
+        reverseQuestionImage.alt = '';
+      }
+      // 隐藏所有答案区域并清除图片源
+      answerDisplays.forEach((display, index) => {
+        display.classList.add('hidden');
+        if (answerImageContainers[index]) {
+          answerImageContainers[index].classList.add('hidden');
+        }
+        if (answerImages[index]) {
+          answerImages[index].src = '';
+        }
+      });
+      
+      // 启动整组计时
+      if (currentMode === 'forward') {
+        startGroupTimer(forwardTimer);
+      } else {
+        startGroupTimer(reverseTimer);
+      }
+      
+      // 显示第一题
+      showQuestion();
+    });
+
+    // 绑定看答案和下一题事件
+    showForwardAnswer.addEventListener('click', showAnswer);
+    showReverseAnswer.addEventListener('click', showAnswer);
+    nextForward.addEventListener('click', nextQuestion);
+    nextReverse.addEventListener('click', nextQuestion);
+  </script>
+</body>
+</html>
